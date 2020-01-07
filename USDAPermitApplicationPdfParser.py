@@ -26,16 +26,17 @@ def read_pdf(filename):
         if 'DESTINATION' in line.strip():
             destinationSection = True
         if destinationSection:
-            if line.strip() == 'Address:':
-                addressIndex = pdfline.index(line)
-                state = pdfline[addressIndex+1].strip()
+            if 'Mailing' in line:
+                mailingIndex = pdfline.index(line)
+                addressSplit = pdfline[mailingIndex-1].strip().split(' ')
+                if len(addressSplit) > 2:
+                    if 'Street Address:' in pdfline[mailingIndex-1]:
+                        state = addressSplit[-1]
+                    else:
+                        state = addressSplit[-2]
+                else:
+                    state = addressSplit[-1]
                 destinationSection = False
-                #break
-            if 'Street Address:' in line.strip():
-                addressSplit = line.strip().split(' ')
-                state = addressSplit[-1]
-                destinationSection = False
-                #break
         if 'DATE' in line.strip() and not 'DATE(S)' in line.strip():
             applicationDate = pdfline[pdfline.index(line) + 1].strip().replace(',', '')
             datetime_object = datetime.strptime(applicationDate, '%b %d %Y')
@@ -54,7 +55,12 @@ def read_pdf(filename):
             if organismSection:
                 organism = row[0]
                 classification = row[1]
-                shippedFrom = row[4]
+                if len(row) > 3:
+                    shippedFrom = row[4]
+                if not pd.isna(classification) and len(classification.strip().split(' ')) > 1:
+                    organismSplit = classification.strip().split(' ')
+                    genus = organismSplit[0]
+                    species = organismSplit[1]
 
             if organism == 'Article':
                 organismSection = False
@@ -68,11 +74,11 @@ def read_pdf(filename):
                 intendedUseSection = True
                 continue
             
-            if pd.isna(organism) or (not pd.isna(classification) and classification in organism):
+            if pd.isna(organism) or (not pd.isna(classification) and classification in organism) or (len(organism) > 100 and genus in organism and species in organism):
                organism = row[1]
 
-            if 'Scientific Names' not in organism and organismSection and 'Article' not in organism:
-                organismList.append(organism)
+            if 'Scientific Names' not in organism and organismSection and 'Article' not in organism and 'Classification' not in organism:
+                organismList.append(organism.replace('*',''))
 
                 if not shippedFromCheck:
                     shippedFromInfo = shippedFrom
@@ -84,7 +90,7 @@ def read_pdf(filename):
     # need this format to have multiple associations in upload file
     appliedOrganisms = "\"," + ','.join(organismList) + ",\""
 
-    dataList = ['PERMIT', '', '', appNumber, appliedOrganisms, state, shippedFromInfo, appDate, intendedUse]
+    dataList = ['PERMIT', '', '', appNumber, state, shippedFromInfo, appDate, intendedUse, appliedOrganisms]
     csvData.append(dataList)
 
 def create_csv():
@@ -107,6 +113,6 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
 
     csvData = []
-    csvData.append(['ENTITY TYPE', 'BARCODE', 'Name', 'ApplicationNumber', 'APPLIEDTAXONOMY', 'State', 'ShippedFrom', 'ApplicationDate', 'IntendedUse'])
+    csvData.append(['ENTITY TYPE', 'BARCODE', 'Name', 'ApplicationNumber', 'State', 'ShippedFrom', 'ApplicationDate', 'IntendedUse', 'APPLIEDTAXONOMY'])
 
     main() 
