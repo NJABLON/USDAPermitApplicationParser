@@ -50,7 +50,8 @@ def read_pdf(filename):
     for table in clean_df:    
         for index, row in table.iterrows():
             col1 = row[0]
-            col2 = row[1]
+            if len(row) > 1:
+                col2 = row[1]
 
             if organismSection:
                 organism = row[0]
@@ -68,6 +69,7 @@ def read_pdf(filename):
 
             if intendedUseSection:
                 intendedUse = col2
+                intendedUseDesc = row[2] if not pd.isna(row[2]) else ''
                 break
 
             if col1 == 'Article' and col2 == 'Intended Use':
@@ -77,7 +79,7 @@ def read_pdf(filename):
             if pd.isna(organism) or (not pd.isna(classification) and classification in organism) or (len(organism) > 100 and genus in organism and species in organism):
                organism = row[1]
 
-            if 'Scientific Names' not in organism and organismSection and 'Article' not in organism and 'Classification' not in organism:
+            if not pd.isna(organism) and 'Scientific Names' not in organism and organismSection and 'Article' not in organism and 'Classification' not in organism:
                 organismList.append(organism.replace('*',''))
 
                 if not shippedFromCheck:
@@ -90,7 +92,7 @@ def read_pdf(filename):
     # need this format to have multiple associations in upload file
     appliedOrganisms = "\"," + ','.join(organismList) + ",\""
 
-    dataList = ['PERMIT', '', '', appNumber, state, shippedFromInfo, appDate, intendedUse, appliedOrganisms]
+    dataList = ['PERMIT', '', '', appNumber, state, shippedFromInfo, appDate, intendedUse, intendedUseDesc, appliedOrganisms]
     csvData.append(dataList)
 
 def create_csv():
@@ -113,6 +115,6 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
 
     csvData = []
-    csvData.append(['ENTITY TYPE', 'BARCODE', 'Name', 'ApplicationNumber', 'State', 'ShippedFrom', 'ApplicationDate', 'IntendedUse', 'APPLIEDTAXONOMY'])
+    csvData.append(['ENTITY TYPE', 'BARCODE', 'Name', 'ApplicationNumber', 'State', 'ShippedFrom', 'ApplicationDate', 'IntendedUse', 'IntendedUseDescription', 'APPLIEDTAXONOMY'])
 
     main() 
